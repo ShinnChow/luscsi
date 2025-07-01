@@ -23,7 +23,7 @@ for h in $hosts; do
   echo -e "\033[35m === $h: power turned on === \033[0m"
 done
 
-
+yq -i '.global.k8sImageRegistry = "k8s.m.daocloud.io"' ./deploy/luscsi/values.yaml
 yq -i '.global.luscsiImageRegistry = "10.6.112.210"' ./deploy/luscsi/values.yaml
 yq -i ".luscsiNode.luscsi.image.tag = \"${GITHUB_RUN_ID}\"" ./deploy/luscsi/values.yaml
 
