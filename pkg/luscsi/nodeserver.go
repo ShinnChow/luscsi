@@ -74,7 +74,7 @@ func (d *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishVo
 	lusVol, err := d.getLusVolumeFromRequest(req)
 	if err != nil {
 		klog.V(2).ErrorS(err, "failed to get volume info")
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, "failed to get volume info: %s", err.Error())
 	}
 
 	mountOptions := lusVol.volCap.GetMount().GetMountFlags()

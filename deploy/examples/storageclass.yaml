@@ -5,7 +5,7 @@ metadata:
 provisioner: luscsi.luskits.io
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
-allowVolumeExpansion: false
+allowVolumeExpansion: true
 parameters:
   mgsAddress: "10.6.118.91@tcp"
   fsName: "debug-fs"

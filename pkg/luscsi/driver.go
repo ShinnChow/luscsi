@@ -11,6 +11,8 @@ var (
 	controllerServiceCapabilities = []csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_SINGLE_NODE_MULTI_WRITER,
+		// Lustre offers a shared filesystem volume, thus only ControllerExpandVolume is required
+		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 	}
 
 	volumeCapabilities = []csi.VolumeCapability_AccessMode_Mode{

@@ -35,6 +35,20 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /csi
+        - name: csi-resizer
+          image:  {{ .Values.global.k8sImageRegistry}}/{{ .Values.csiController.resizer.image.repository}}:{{ .Values.csiController.resizer.image.tag}}
+          args:
+            - "-csi-address=$(CSI_ADDRESS)"
+            - "-v=2"
+            - "-leader-election"
+            - "--leader-election-namespace=kube-system"
+            - '-handle-volume-inuse-error=false'
+          env:
+            - name: CSI_ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
       volumes:
         - name: socket-dir
           hostPath:

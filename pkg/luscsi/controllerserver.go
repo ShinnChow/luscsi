@@ -46,12 +46,12 @@ func (d *ControllerServer) CreateVolume(ctx context.Context, req *csi.CreateVolu
 
 	if err := checkVolumeRequest(req); err != nil {
 		klog.V(2).ErrorS(err, "failed to check request")
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, "failed to check volume request: %s", err.Error())
 	}
 
 	if err := checkParameters(req.GetParameters()); err != nil {
 		klog.V(2).ErrorS(err, "failed to check parameters")
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, "failed to check parameters: %s", err.Error())
 	}
 
 	lusVol, _ := getLusVolumeFromRequest(req)
@@ -216,7 +216,7 @@ func setKeyValueInMap(m map[string]string, key, value string) {
 func (d *ControllerServer) internalUnmount(ctx context.Context, volName string) error {
 	targetPath := getInternalMountPath(d.WorkingMountDir, volName)
 
-	// Unmount nfs server at base-dir
+	// Unmount lustre server at base-dir
 	klog.V(2).Infof("internally unmounting %v", targetPath)
 	var err error
 	forceUnmounter, ok := d.mounter.(mount.MounterForceUnmounter)
@@ -391,5 +391,60 @@ func (d *ControllerServer) ControllerGetCapabilities(
 ) (*csi.ControllerGetCapabilitiesResponse, error) {
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: d.cscap,
+	}, nil
+}
+
+func (d *ControllerServer) ControllerExpandVolume(_ context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
+	klog.V(2).Infof("ControllerExpandVolume called, volID: %s", req.GetVolumeId())
+
+	if req.GetVolumeId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
+	}
+
+	lusVol, err := getLusVolumeFromVolumeID(req.GetVolumeId())
+	if err != nil {
+		klog.Errorf("failed to get lustre volume from volumeID %s: %v", req.GetVolumeId(), err)
+		return nil, err
+	}
+	lusVol.size = req.GetCapacityRange().GetRequiredBytes()
+
+	// internal mount lustre to local
+	if err = d.internalMount(context.TODO(), lusVol); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to mount lustre server: %v", err)
+	}
+	defer func() {
+		if err = d.internalUnmount(context.TODO(), lusVol.subDir); err != nil {
+			klog.Warningf("failed to unmount lustre server: %v", err)
+		}
+	}()
+
+	// the volume must exist at this time, expand the volume now
+	internalPath := path.Join(getInternalMountPath(d.WorkingMountDir, lusVol.volID), lusVol.volID)
+	lusVer := GetLustreServerVersion()
+	if isVersionGreaterOrEqual(lusVer, "2.16.1") {
+		if err = setQuota(internalPath, lusVol.volID, lusVol.size); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to set quota for volume %s: %v", lusVol.volID, err)
+		}
+	} else {
+		klog.Warningf("lustre version %s does not support quota, skipping quota setup", lusVer)
+	}
+
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes:         lusVol.size,
+		NodeExpansionRequired: false, // Lustre does not require node expansion
+	}, nil
+}
+
+func getLusVolumeFromVolumeID(volumeID string) (*lustreVolume, error) {
+	volumeSlice := strings.Split(volumeID, "#")
+	if len(volumeSlice) != 4 {
+		return nil, status.Error(codes.InvalidArgument, "invalid volumeID")
+	}
+	return &lustreVolume{
+		mgsAddress: volumeSlice[0],
+		fsName:     volumeSlice[1],
+		sharePath:  volumeSlice[2],
+		volID:      volumeSlice[3],
+		subDir:     volumeSlice[3],
 	}, nil
 }

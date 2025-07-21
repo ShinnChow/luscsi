@@ -31,6 +31,12 @@ csiController:
       pullPolicy: IfNotPresent
       tag: v2.0.3
     resources: {}
+  resizer:
+    image:
+      repository: sig-storage/csi-resizer
+      pullPolicy: IfNotPresent
+      tag: v1.13.1
+    resources: {}
 
 luscsiNode:
   serviceAccount:
