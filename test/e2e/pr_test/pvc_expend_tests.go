@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-var _ = ginkgo.Describe("pr test", ginkgo.Label("none"), func() {
+var _ = ginkgo.Describe("pvc expend test ", ginkgo.Label("pr-e2e"), func() {
 
 	config, err := clientcmd.BuildConfigFromFlags("", "/home/github-runner/.kube/config")
 	gomega.ExpectWithOffset(2, err).NotTo(gomega.HaveOccurred(), "failed build config")
@@ -41,7 +41,7 @@ var _ = ginkgo.Describe("pr test", ginkgo.Label("none"), func() {
 	ginkgo.Context("Checking Component Status", func() {
 		ginkgo.It("waiting for luscsi ready", func() {
 			logrus.Infof("waiting for luscsi ready")
-			time.Sleep(60 * time.Second)
+			time.Sleep(120 * time.Second)
 			podList, _ := kubeClient.CoreV1().Pods("luscsi").List(context.TODO(), metav1.ListOptions{})
 			deploymentList, _ := kubeClient.AppsV1().Deployments("luscsi").List(context.TODO(), metav1.ListOptions{})
 			for _, pod := range podList.Items {
@@ -173,6 +173,27 @@ var _ = ginkgo.Describe("pr test", ginkgo.Label("none"), func() {
 			})
 			gomega.ExpectWithOffset(2, err).NotTo(gomega.HaveOccurred(), "failed wait pod running")
 		})
+	})
+
+	ginkgo.Context("Expand pvc", func() {
+		ginkgo.It("Modify spec-resources-requests-storage", func() {
+			pvc, err := kubeClient.CoreV1().PersistentVolumeClaims("default").Get(context.Background(), "luscsi-volume", metav1.GetOptions{})
+			gomega.ExpectWithOffset(2, err).NotTo(gomega.HaveOccurred(), "failed get pvc")
+			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse("20Gi")
+			_, err = kubeClient.CoreV1().PersistentVolumeClaims("default").Update(context.Background(), pvc, metav1.UpdateOptions{})
+			gomega.ExpectWithOffset(2, err).NotTo(gomega.HaveOccurred(), "failed update pvc")
+			logrus.Infof("waiting for pvc resize")
+			err = wait.PollUntilContextCancel(context.Background(), 20*time.Second, true, func(ctx context.Context) (bool, error) {
+				pvc, err := kubeClient.CoreV1().PersistentVolumeClaims("default").Get(context.Background(), "luscsi-volume", metav1.GetOptions{})
+				gomega.ExpectWithOffset(2, err).NotTo(gomega.HaveOccurred(), "failed get pvc")
+				logrus.Infof("pvc resize status: %s", pvc.Status.Capacity[corev1.ResourceStorage])
+				return pvc.Status.Capacity[corev1.ResourceStorage] == resource.MustParse("20Gi"), nil
+			})
+			gomega.ExpectWithOffset(2, err).NotTo(gomega.HaveOccurred(), "failed wait pvc resize")
+			logrus.Infof("pvc resize success")
+
+		})
+
 	})
 
 })

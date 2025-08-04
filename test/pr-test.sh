@@ -29,5 +29,5 @@ yq -i ".luscsiNode.luscsi.image.tag = \"${GITHUB_RUN_ID}\"" ./deploy/luscsi/valu
 
 
 
-ginkgo -timeout=10h --fail-fast  --label-filter=${E2E_TESTING_LEVEL} test/e2e
+ginkgo -timeout=10h --fail-fast  --label-filter=pr-e2e test/e2e
 
