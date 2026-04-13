@@ -25,15 +25,13 @@ LUSCSI 是一个基于 [Container Storage Interface (CSI)](https://github.com/co
 确保 Kubernetes 集群已安装 Helm 插件，并按照以下步骤部署 LUSCSI：
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-repo/luscsi.git
+# 添加 Helm 仓库
+helm repo add luscsi https://github.com/luskits/luscsi
 
-# 构建镜像
-cd luscsi
-REGISTRY=10.6.118.112:5000/luskits make release
-
-# Helm 部署到集群
-helm install luscsi -n luscsi --create-namespace deploy/luscsi/
+# 部署 luscsi
+helm install luscsi luscsi/luscsi -n luscsi --create-namespace \
+--set global.luscsiImageRegistry=ghcr.m.daocloud.io \
+--set global.k8sImageRegistry=m.daocloud.io/registry.k8s.io
 ```
 
 ### 2. 创建 StorageClass
