@@ -27,15 +27,13 @@ The following parameters are used to configure Lustre volumes:
 Ensure the Kubernetes cluster has the Helm plugin installed, and follow these steps to deploy LUSCSI:
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-repo/luscsi.git
+# Add luscsi helm repo
+helm repo add luscsi https://github.com/luskits/luscsi
 
-# Build the image
-cd luscsi
-REGISTRY=10.6.118.112:5000/luskits make release
-
-# Deploy to the cluster using Helm
-helm install luscsi -n luscsi --create-namespace deploy/luscsi/
+# Deploy luscsi using Helm
+helm install luscsi luscsi/luscsi -n luscsi --create-namespace \
+--set global.luscsiImageRegistry=ghcr.m.daocloud.io \
+--set global.k8sImageRegistry=m.daocloud.io/registry.k8s.io
 ```
 
 ### 2. Create StorageClass
